@@ -1,0 +1,23 @@
+# Gemini CLI Fix Command File
+# This file will run the necessary fixes for Tailwind + PostCSS integration errors
+
+[commands]
+
+# 1. Install the correct PostCSS plugin
+install_postcss_tailwind = "npm install -D @tailwindcss/postcss"
+
+# 2. Update postcss.config.js with correct plugin reference
+update_postcss_config = """
+echo "module.exports = {
+  plugins: {
+    '@tailwindcss/postcss': {},
+    autoprefixer: {},
+  }
+}" > postcss.config.js
+"""
+
+# 3. Ensure tailwind.config.js exists
+init_tailwind = "npx tailwindcss init -p"
+
+# 4. Clean cache and rebuild
+rebuild = "rm -rf node_modules/.cache && npm run build"
