@@ -2,15 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { ethers, formatEther } from "ethers";
 import AuctionCard from '../components/AuctionCard';
 import { useWallet } from '../contexts/WalletContext';
+import { CONTRACT_ADDRESS as contractAddress, CONTRACT_ABI as contractABI } from '../config/contract';
+import { firstGatewayUrl } from '../utils/ipfs';
 
 
-// --- Placeholder Data and Contract Details ---
-// Replace with your actual contract address and ABI
-const contractAddress = 'YOUR_CONTRACT_ADDRESS';
-const contractABI = [
-  // A minimal ABI for getAllAuctions. Replace with your full ABI.
-  'function getAllAuctions() view returns (tuple(uint256 id, string title, uint256 highestBid, uint256 endTime, string image)[])'
-];
+// --- Placeholder Data ---
 
 // Placeholder auction data for UI development without a live contract
 const placeholderAuctions = [

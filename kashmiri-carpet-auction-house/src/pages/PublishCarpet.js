@@ -1,30 +1,12 @@
 import React, { useState } from 'react';
-import { create as ipfsHttpClient } from 'ipfs-http-client';
 import { Contract, parseEther } from "ethers";
 import { useWallet } from '../contexts/WalletContext';
-import { Buffer } from 'buffer';
+import { CONTRACT_ADDRESS as contractAddress, CONTRACT_ABI as contractABI } from '../config/contract';
+import { uploadFileToWeb3Storage, uploadJsonToWeb3Storage } from '../utils/storage';
 
-// --- IPFS and Contract Configuration ---
-// Replace with your Infura project ID and secret, or your own IPFS node details
-const projectId = 'YOUR_INFURA_PROJECT_ID';
-const projectSecret = 'YOUR_INFURA_PROJECT_SECRET';
-const auth = 'Basic ' + Buffer.from(projectId + ':' + projectSecret).toString('base64');
+// --- Storage Configuration ---
+const PINATA_JWT = process.env.REACT_APP_PINATA_JWT || '';
 
-const ipfs = ipfsHttpClient({
-  host: 'ipfs.infura.io',
-  port: 5001,
-  protocol: 'https',
-  headers: {
-    authorization: auth,
-  },
-});
-
-// Replace with your actual contract address and ABI
-const contractAddress = 'YOUR_CONTRACT_ADDRESS';
-const contractABI = [
-  // Replace with your full ABI, including createAuction
-  'function createAuction(string memory tokenURI, uint256 startPrice, uint256 duration)',
-];
 // --- End of Configuration ---
 
 const PublishCarpet = () => {
@@ -32,15 +14,51 @@ const PublishCarpet = () => {
   const [formInput, setFormInput] = useState({ name: '', description: '', price: '', duration: '' });
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState('');
   const [success, setSuccess] = useState(false);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
   };
 
-  const uploadToIPFS = async (data) => {
-    const result = await ipfs.add(data);
-    return result.path;
+  // Upload helpers supporting Web3.Storage (preferred) or Pinata
+  const uploadFile = async (file) => {
+    try {
+      return await uploadFileToWeb3Storage(file);
+    } catch (_) {}
+    if (PINATA_JWT) {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${PINATA_JWT}` },
+        body: form
+      });
+      if (!res.ok) throw new Error('Pinata file upload failed');
+      const json = await res.json();
+      return json.IpfsHash;
+    }
+    throw new Error('No storage provider configured. Set REACT_APP_WEB3_STORAGE_TOKEN or REACT_APP_PINATA_JWT');
+  };
+
+  const uploadJSON = async (obj) => {
+    try {
+      return await uploadJsonToWeb3Storage(obj);
+    } catch (_) {}
+    if (PINATA_JWT) {
+      const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${PINATA_JWT}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(obj)
+      });
+      if (!res.ok) throw new Error('Pinata JSON upload failed');
+      const json = await res.json();
+      return json.IpfsHash;
+    }
+    throw new Error('No storage provider configured. Set REACT_APP_WEB3_STORAGE_TOKEN or REACT_APP_PINATA_JWT');
   };
 
   const handleSubmit = async (e) => {
@@ -62,21 +80,19 @@ const PublishCarpet = () => {
     setLoading(true);
 
     try {
-      // 1. Upload image to IPFS
-      const imagePath = await uploadToIPFS(file);
-      const imageUrl = `https://ipfs.io/ipfs/${imagePath}`;
+      setStatus('Uploading image to storage...');
+      // 1. Upload image to IPFS (Web3.Storage/Pinata)
+      const imageCid = await uploadFile(file);
+      const imageUrl = `https://ipfs.io/ipfs/${imageCid}`;
 
+      setStatus('Uploading metadata to storage...');
       // 2. Upload metadata to IPFS
-      const metadata = JSON.stringify({
-        name,
-        description,
-        image: imageUrl,
-      });
-      const metadataPath = await uploadToIPFS(metadata);
-      const metadataUrl = `https://ipfs.io/ipfs/${metadataPath}`;
+      const metadataCid = await uploadJSON({ name, description, image: imageUrl });
+      const metadataUrl = `https://ipfs.io/ipfs/${metadataCid}`;
 
+      setStatus('Creating auction on-chain...');
       // 3. Call smart contract
-      const signer = provider.getSigner();
+      const signer = await provider.getSigner();
       const contract = new Contract(contractAddress, contractABI, signer);
       const startPrice =  parseEther(price);
       const auctionDuration = parseInt(duration) * 60 * 60; // Convert hours to seconds
@@ -89,9 +105,10 @@ const PublishCarpet = () => {
       setFile(null);
     } catch (error) {
       console.error('Error publishing carpet:', error);
-      alert('Failed to publish carpet. See console for details.');
+      alert(`Failed to publish carpet: ${error?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
+      setStatus('');
     }
   };
 
@@ -155,7 +172,7 @@ const PublishCarpet = () => {
           className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-500"
           disabled={loading}
         >
-          {loading ? 'Publishing...' : 'Publish Carpet'}
+          {loading ? (status || 'Publishing...') : 'Publish Carpet'}
         </button>
       </form>
     </div>

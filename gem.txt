@@ -1,0 +1,31 @@
+Here's an overview of the implemented features on your website:
+
+**1. Explore Auctions Page:**
+- Displays a list of auctions with carpet images, titles, current bids, and countdown timers.
+- Includes a search bar to filter auctions by carpet name.
+- Features a responsive grid layout.
+
+**2. Auction Details Page:**
+- Shows comprehensive details for a selected auction, including a large image, name, description, seller address, current bid, bid history, and auction status.
+- Provides a "Place Bid" section for users to submit bids.
+
+**3. Publish Carpet Page:**
+- Allows weavers to list new carpets through a form.
+- Supports uploading images and metadata to IPFS.
+- Initiates smart contract calls to create new auctions.
+
+**4. Dashboard Page:**
+- Offers a personalized dashboard with two sections:
+  - **Seller Dashboard:** Displays carpets published by the user, their auction status, highest bid, and winner information, with a "Claim Funds" button.
+  - **Buyer Dashboard:** Shows auctions the user participated in, their bid history, and outcomes, with a "Claim NFT" button for won auctions.
+
+**5. Wallet Connection:**
+- Integrates with MetaMask for secure wallet connection and management.
+
+**6. Navigation & Styling:**
+- Utilizes `react-router-dom` for seamless navigation between pages.
+- Styled with Tailwind CSS for a clean and responsive user interface.
+
+**7. Smart Contract & IPFS Integration:**
+- Leverages Ethers.js for all smart contract interactions (fetching data, placing bids, creating auctions).
+- Uses `ipfs-http-client` for decentralized storage of images and metadata on IPFS.

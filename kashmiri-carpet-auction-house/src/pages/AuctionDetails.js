@@ -3,16 +3,10 @@ import { useParams } from 'react-router-dom';
 import { ethers, formatEther, parseEther } from 'ethers';
 import { useWallet } from '../contexts/WalletContext';
 import Countdown from '../components/Countdown';
+import { CONTRACT_ADDRESS as contractAddress, CONTRACT_ABI as contractABI } from '../config/contract';
+import { firstGatewayUrl, fetchIpfsJson } from '../utils/ipfs';
 
 // --- Mock Data and Contract Details ---
-// Replace with your actual contract address and ABI
-const contractAddress = 'YOUR_CONTRACT_ADDRESS';
-const contractABI = [
-  // Replace with your full ABI, including getAuctionById and placeBid
-  'function getAuctionById(uint256 auctionId) view returns (tuple(uint256 id, string title, string description, address seller, uint256 highestBid, address highestBidder, uint256 endTime, bool active)) ',
-  'function placeBid(uint256 auctionId, uint256 bidAmount)',
-  'event BidPlaced(uint256 indexed auctionId, address indexed bidder, uint256 amount)'
-];
 
 const mockAuctionDetails = {
   id: 1,
@@ -59,7 +53,7 @@ const AuctionDetails = () => {
         
         // Fetch auction details
         const details = await contract.getAuctionById(id);
-        setAuction({
+        const base = {
           id: details.id.toString(),
           title: details.title,
           description: details.description,
@@ -68,8 +62,9 @@ const AuctionDetails = () => {
           highestBidder: details.highestBidder,
           endTime: new Date(details.endTime.toNumber() * 1000),
           active: details.active,
-          image: 'https://via.placeholder.com/800x600', // Replace with actual image logic
-        });
+          image: 'https://via.placeholder.com/800x600'
+        };
+        setAuction(base);
 
         // Fetch bid history from events
         const bidFilter = contract.filters.BidPlaced(id, null, null);
@@ -103,7 +98,7 @@ const AuctionDetails = () => {
     }
 
     try {
-      const signer = provider.getSigner();
+      const signer = await provider.getSigner();
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
       const tx = await contract.placeBid(id, parseEther(bidAmount));
       
